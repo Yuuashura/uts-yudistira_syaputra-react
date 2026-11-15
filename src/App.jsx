@@ -5,6 +5,7 @@ import { useCart } from './context/CartContext';
 import { useNotifications } from './context/NotificationContext';
 import { useToast } from './context/ToastContext';
 import useLocalStorage from './hooks/useLocalStorage';
+import useMotionFeedback from './hooks/useMotionFeedback';
 import Header from './components/Header';
 import Footer from './components/Footer';
 import MainContent from './components/MainContent';
@@ -23,7 +24,7 @@ const validReviews = value => Array.isArray(value) && value.every(item => item &
 
 export default function App() {
   const cart = useCart();
-  const { notify, unread, notifications, markRead, storageError: notificationError } = useNotifications();
+  const { notify, unread, notifications, storageError: notificationError } = useNotifications();
   const { toast } = useToast();
   const [favorites, setFavorites, favoriteError] = useLocalStorage('kopiku.favorites', {}, validFavorites);
   const [reviews, setReviews, reviewError] = useLocalStorage('kopiku.reviews', [], validReviews);
@@ -31,6 +32,7 @@ export default function App() {
   const [category, setCategory] = useState('Semua');
   const [sort, setSort] = useState('default');
   const [overlay, setOverlay] = useState(null);
+  useMotionFeedback();
   const enriched = menu.map(item => {
     const comments = reviews.filter(review => review.menuId === item.id);
     return { ...item, stock: cart.state.stock[item.id], rating: comments.length ? comments.reduce((sum, review) => sum + review.rating, 0) / comments.length : item.rating };
@@ -51,7 +53,7 @@ export default function App() {
   if (sorters[sort]) visible.sort((a, b) => sorters[sort](a, b) || a.id.localeCompare(b.id));
   const selected = enriched.find(item => item.id === overlay?.itemId);
   const selectedReviews = reviews.filter(review => review.menuId === selected?.id).sort((a, b) => b.createdAt - a.createdAt);
-  function open(type, item) { if (type === 'notifications') markRead(); setOverlay({ type, itemId: item?.id }); }
+  function open(type, item) { setOverlay({ type, itemId: item?.id }); }
   const close = () => setOverlay(null);
   function action(type, payload) { const result = cart.act(type, payload); notify(result.message, result.ok ? 'success' : 'error'); return result; }
   function favorite(item) {
@@ -64,7 +66,7 @@ export default function App() {
   function changeCategory(name) { setCategory(name); setSort(name === 'Favorit' ? 'favorite-new' : 'default'); toast(`Menampilkan ${name.toLowerCase()}.`, 'info'); }
   function checkout() { const result = action('CHECKOUT'); if (result.ok) setOverlay({ type: 'receipt', order: result.order }); }
   const storageError = favoriteError || reviewError || notificationError || cart.storageError;
-  return <><a className="skip-link" href="#menu">Langsung ke menu</a><Header query={query} onQuery={setQuery} onSearch={message => toast(typeof message === 'string' ? message : `${visible.length} menu ditemukan.`, 'info')} unread={unread} count={cart.count} open={open} />
+  return <><a className="skip-link" href="#menu">Langsung ke menu</a><Header query={query} onQuery={setQuery} onSearch={message => toast(typeof message === 'string' ? message : `${visible.length} menu ditemukan.`, 'info')} unread={unread} notifications={notifications} orders={cart.state.orders} count={cart.count} open={open} />
     {storageError && <div className="storage-warning" role="status"><CircleAlert size={18} /><span>Penyimpanan lokal bermasalah. Data yang tidak valid dipulihkan; perubahan mungkin hanya tersimpan selama sesi ini.</span></div>}
     <MainContent items={visible} categories={categories} counts={counts} category={category} onCategory={changeCategory} sort={sort} onSort={value => { setSort(value); toast('Urutan menu diperbarui.', 'info'); }} favorites={favorites} cart={cart.state.cart} onFavorite={favorite} open={open} add={item => action('ADD', { id: item.id })} resetFilters={() => { setQuery(''); changeCategory('Semua'); }} applyOffer={() => { action('PROMO', { code: 'UTS25' }); open('cart'); }} />
     <Footer />
