@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 
@@ -8,7 +8,21 @@ export default function Modal({ title, children, onClose, drawer = false, destru
   const panelRef = useRef(null);
   const titleId = useId();
   const closeRef = useRef(onClose);
+  const closeTimerRef = useRef(null);
+  const closingRef = useRef(false);
+  const [closing, setClosing] = useState(false);
   closeRef.current = onClose;
+
+  function requestClose() {
+    if (closingRef.current) return;
+    closingRef.current = true;
+    setClosing(true);
+    closeTimerRef.current = setTimeout(() => {
+      closeTimerRef.current = null;
+      closeRef.current();
+    }, drawer ? 420 : 190);
+  }
+
   useEffect(() => {
     const panel = panelRef.current;
     const previous = document.activeElement;
@@ -28,14 +42,15 @@ export default function Modal({ title, children, onClose, drawer = false, destru
     }
     document.addEventListener('keydown', onKeyDown);
     return () => {
+      if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
       document.removeEventListener('keydown', onKeyDown);
       document.body.style.overflow = overflow;
       if (previous?.isConnected) previous.focus();
     };
   }, []);
-  return createPortal(<div className={`modal-layer ${drawer ? 'is-drawer' : ''}`} onMouseDown={event => { if (!destructive && event.target === event.currentTarget) onClose(); }}>
-    <div ref={panelRef} className={`modal ${drawer ? 'drawer' : ''}`} role="dialog" aria-modal="true" aria-labelledby={titleId}>
-      <div className="modal-heading"><div><span className="eyebrow">KOPIKU / YOUR LITTLE PAUSE</span><h2 id={titleId}>{title}</h2></div><button className="icon-button close-button" aria-label="Tutup dialog" onClick={onClose}><X /></button></div>
+  return createPortal(<div className={`modal-layer ${drawer ? 'is-drawer' : ''}${closing ? ' is-closing' : ''}`} onMouseDown={event => { if (!destructive && event.target === event.currentTarget) requestClose(); }}>
+    <div ref={panelRef} className={`modal ${drawer ? 'drawer' : ''}${closing ? ' is-closing' : ''}`} role="dialog" aria-modal="true" aria-labelledby={titleId}>
+      <div className="modal-heading"><div><span className="eyebrow">KOPIKU / YOUR LITTLE PAUSE</span><h2 id={titleId}>{title}</h2></div><button className="icon-button close-button" aria-label="Tutup dialog" onClick={requestClose}><X /></button></div>
       <div className="modal-body">{children}</div>
     </div>
   </div>, document.body);
