@@ -465,6 +465,10 @@ h1, h2, h3, p { margin: 0; }
 .active-promo { display: flex; align-items: center; gap: 7px; margin-top: 8px; padding: 7px 9px; background: #e9ddc8; border-radius: 6px; font-size: 11px; color: #51412f; }
 .active-promo span { flex: 1; font-weight: 700; }
 .checkout-section { padding-top: 15px; }
+.checkout-button { position: relative; overflow: hidden; transition: background 180ms ease, transform 180ms ease; }
+.checkout-button.is-processing { background: #6f5735; border-color: #6f5735; cursor: wait; }
+.checkout-button.is-processing::after { content: ''; position: absolute; inset: 0; background: linear-gradient(105deg, transparent 25%, rgba(255, 255, 255, .18) 48%, transparent 72%); animation: payment-shimmer 900ms linear infinite; }
+.payment-spinner { animation: payment-spin 850ms linear infinite; }
 .totals { margin: 0; }
 .totals > div { display: flex; justify-content: space-between; gap: 14px; padding: 4px 0; font-size: 12px; }
 .totals dt { color: #6f5f4a; }
@@ -576,6 +580,8 @@ svg.icon-bounce { animation: icon-bounce 430ms cubic-bezier(.22, 1, .36, 1); tra
 @keyframes cart-item-out { 0% { opacity: 1; transform: translateX(0) scale(1); max-height: 160px; } 45% { opacity: .55; transform: translateX(12px) scale(.98); } 100% { opacity: 0; transform: translateX(44px) scale(.92); max-height: 0; padding-top: 0; padding-bottom: 0; border-color: transparent; } }
 @keyframes quantity-settle { 0% { opacity: .25; transform: translateY(-5px) scale(1.2); } 100% { opacity: 1; transform: none; } }
 @keyframes quantity-change { 0% { transform: translateX(0); } 35% { transform: translateX(-4px) scale(.995); } 70% { transform: translateX(3px) scale(1.002); } 100% { transform: translateX(0) scale(1); } }
+@keyframes payment-spin { to { transform: rotate(360deg); } }
+@keyframes payment-shimmer { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
 @keyframes drawer-pull { 0% { transform: translateX(38px) scale(.985); opacity: .3; } 65% { transform: translateX(-7px) scale(1.005); opacity: 1; } 100% { transform: translateX(0) scale(1); opacity: 1; } }
 @keyframes veil-in { from { opacity: 0; } to { opacity: 1; } }
 @keyframes veil-out { from { opacity: 1; } to { opacity: 0; } }

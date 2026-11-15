@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Minus, Plus, Trash2, ShoppingBag, ArrowRight, Tag, X, ShieldCheck } from 'lucide-react';
+import { Minus, Plus, Trash2, ShoppingBag, ArrowRight, Tag, X, ShieldCheck, LoaderCircle } from 'lucide-react';
 import Modal from './Modal';
 import { money } from '../utils/pricing';
 export function Totals({ totals }) {
@@ -9,9 +9,14 @@ export default function CartDrawer({ cart, onClose, action, onCheckout }) {
   const [code, setCode] = useState('');
   const [error, setError] = useState('');
   const [motion, setMotion] = useState(null);
+  const [processing, setProcessing] = useState(false);
   const pending = useRef(new Set());
   const timers = useRef(new Set());
-  useEffect(() => () => timers.current.forEach(timer => clearTimeout(timer)), []);
+  const paymentTimer = useRef(null);
+  useEffect(() => () => {
+    timers.current.forEach(timer => clearTimeout(timer));
+    if (paymentTimer.current) clearTimeout(paymentTimer.current);
+  }, []);
   function animate(id, kind) {
     setMotion({ id, kind, token: Date.now() });
     const timer = setTimeout(() => {
@@ -53,5 +58,14 @@ export default function CartDrawer({ cart, onClose, action, onCheckout }) {
     timers.current.add(timer);
   }
   function apply(event) { event.preventDefault(); const result = action('PROMO', { code }); setError(result.ok ? '' : result.message); if (result.ok) setCode(''); }
-  return <Modal title="Keranjangmu" drawer onClose={onClose}>{cart.items.length ? <><p className="cart-caption">{cart.count} pilihan untuk jeda yang lebih nikmat.</p><div className="cart-items">{cart.items.map(item => { const isPending = pending.current.has(item.id); const currentMotion = motion?.id === item.id ? motion.kind : ''; return <article className={`cart-item ${currentMotion ? `is-${currentMotion}` : ''}`} key={item.id}><img src={item.image} alt={item.name} width="76" height="80" /><div className="cart-item-content"><h3>{item.name}</h3><p>{money(item.price)}</p><div className="cart-item-bottom"><div className="stepper"><button aria-label={`Kurangi ${item.name}`} disabled={isPending} onClick={() => changeQuantity(item, 'DECREMENT')}><Minus size={15} /></button><span key={item.quantity} aria-label={`Jumlah ${item.name}`}>{item.quantity}</span><button aria-label={`Tambah jumlah ${item.name}`} disabled={isPending || item.quantity >= cart.state.stock[item.id]} onClick={() => changeQuantity(item, 'ADD')}><Plus size={15} /></button></div><button className="icon-button remove-button" aria-label={`Hapus ${item.name}`} disabled={isPending} onClick={() => removeItem(item)}><Trash2 size={17} /></button><strong>{money(item.price * item.quantity)}</strong></div></div></article>; })}</div><div className="promo-section"><label htmlFor="promo-code"><Tag size={17} />Punya kode promo?</label><form className="promo-form" onSubmit={apply}><input id="promo-code" placeholder="Masukkan kode" value={code} onChange={event => setCode(event.target.value)} aria-invalid={!!error} aria-describedby="promo-error" /><button className="secondary-button" type="submit">Terapkan</button></form><small>UTS25 · HEMAT10 · KOPI15</small><p className="form-error" id="promo-error">{error}</p>{cart.state.promoCode && <div className="active-promo"><Tag size={16} /><span>{cart.state.promoCode} diterapkan</span><button className="icon-button" aria-label="Hapus promo" onClick={() => { action('CLEAR_PROMO'); setError(''); }}><X size={16} /></button></div>}</div><div className="checkout-section"><Totals totals={cart.totals} /><button className="primary-button full-width" onClick={onCheckout}>Bayar (simulasi)<ArrowRight size={19} /></button><p className="safe-note"><ShieldCheck size={15} />Tidak ada uang yang ditagihkan.</p></div></> : <div className="empty-state"><ShoppingBag size={42} strokeWidth={1} /><h3>Jeda yang nikmat<br />dimulai dari satu pilihan.</h3><p>Keranjangmu masih kosong.</p><button className="primary-button" onClick={onClose}>Lihat menu<ArrowRight size={17} /></button></div>}</Modal>;
+  function processPayment() {
+    if (processing || !cart.items.length) return;
+    setProcessing(true);
+    paymentTimer.current = setTimeout(() => {
+      paymentTimer.current = null;
+      setProcessing(false);
+      onCheckout();
+    }, 1150);
+  }
+  return <Modal title="Keranjangmu" drawer onClose={onClose}>{cart.items.length ? <><p className="cart-caption">{cart.count} pilihan untuk jeda yang lebih nikmat.</p><div className="cart-items">{cart.items.map(item => { const isPending = pending.current.has(item.id); const currentMotion = motion?.id === item.id ? motion.kind : ''; return <article className={`cart-item ${currentMotion ? `is-${currentMotion}` : ''}`} key={item.id}><img src={item.image} alt={item.name} width="76" height="80" /><div className="cart-item-content"><h3>{item.name}</h3><p>{money(item.price)}</p><div className="cart-item-bottom"><div className="stepper"><button aria-label={`Kurangi ${item.name}`} disabled={isPending} onClick={() => changeQuantity(item, 'DECREMENT')}><Minus size={15} /></button><span key={item.quantity} aria-label={`Jumlah ${item.name}`}>{item.quantity}</span><button aria-label={`Tambah jumlah ${item.name}`} disabled={isPending || item.quantity >= cart.state.stock[item.id]} onClick={() => changeQuantity(item, 'ADD')}><Plus size={15} /></button></div><button className="icon-button remove-button" aria-label={`Hapus ${item.name}`} disabled={isPending} onClick={() => removeItem(item)}><Trash2 size={17} /></button><strong>{money(item.price * item.quantity)}</strong></div></div></article>; })}</div><div className="promo-section"><label htmlFor="promo-code"><Tag size={17} />Punya kode promo?</label><form className="promo-form" onSubmit={apply}><input id="promo-code" placeholder="Masukkan kode" value={code} onChange={event => setCode(event.target.value)} aria-invalid={!!error} aria-describedby="promo-error" /><button className="secondary-button" type="submit">Terapkan</button></form><small>UTS25 · HEMAT10 · KOPI15</small><p className="form-error" id="promo-error">{error}</p>{cart.state.promoCode && <div className="active-promo"><Tag size={16} /><span>{cart.state.promoCode} diterapkan</span><button className="icon-button" aria-label="Hapus promo" onClick={() => { action('CLEAR_PROMO'); setError(''); }}><X size={16} /></button></div>}</div><div className="checkout-section"><Totals totals={cart.totals} /><button className={`primary-button full-width checkout-button ${processing ? 'is-processing' : ''}`} disabled={processing} onClick={processPayment}>{processing ? <><LoaderCircle className="payment-spinner" size={19} aria-hidden="true" />Memproses pembayaran…</> : <>Bayar (simulasi)<ArrowRight size={19} /></>}</button><p className="safe-note"><ShieldCheck size={15} />Tidak ada uang yang ditagihkan.</p></div></> : <div className="empty-state"><ShoppingBag size={42} strokeWidth={1} /><h3>Jeda yang nikmat<br />dimulai dari satu pilihan.</h3><p>Keranjangmu masih kosong.</p><button className="primary-button" onClick={onClose}>Lihat menu<ArrowRight size={17} /></button></div>}</Modal>;
 }
